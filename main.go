@@ -3,6 +3,7 @@ package main
 import (
 	"go.uber.org/zap"
 	"github.com/GreyHood-Studio/play_server/network"
+	"github.com/gin-gonic/gin"
 )
 
 // game server handler
@@ -25,6 +26,14 @@ func mainTCPServer(port string) {
 	server.Listen()
 }
 
+func mainHTTPServer(port string) {
+	// Disable Console Color
+	// gin.DisableConsoleColor()
+	r := gin.Default()
+
+	r.Run(port)
+}
+
 func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync() // flushes buffer, if any
@@ -35,4 +44,5 @@ func main() {
 	confPort := readDefaultConfig()
 
 	mainTCPServer(confPort)
+	mainHTTPServer(":5000")
 }
