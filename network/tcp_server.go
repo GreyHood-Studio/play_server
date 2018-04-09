@@ -1,106 +1,87 @@
 package network
 
-
 import (
-	"bufio"
-	"log"
 	"net"
+	"fmt"
+	"bufio"
 )
 
-// Client holds info about connection
-type TCP_Client struct {
-	conn   net.Conn
-	Server *tcp_server
+type TCPServer struct {
+	FloorNum	int
+	Port		int
+	conns 		[]net.Conn
+	channels	chan ClientJob
 }
 
-// TCP server
-type tcp_server struct {
-	address                  string // Address to open connection: localhost:9999
-	onNewClientCallback      func(c *TCP_Client)
-	onClientConnectionClosed func(c *TCP_Client, err error)
-	onNewMessage             func(c *TCP_Client, message string)
+type ClientJob struct {
+	data []byte
+	conn net.Conn
 }
 
-// Read client data from channel
-func (c *TCP_Client) listen() {
-	reader := bufio.NewReader(c.conn)
+// 모든 클라이언트한테 전달해주는 데이터
+func (tcp *TCPServer) notifyClient() {
+
+}
+
+// 특정 유저한테 전달해주는 데이터
+func (tcp *TCPServer) commandClient() {
+
+}
+
+// 유저의 Request 없이도 주기적으로 돌아서 처리해주는 로직
+func (tcp *TCPServer) updateClient(conn net.Conn) {
+	// 처리해야하는 로직
+
+}
+
+func (tcp *TCPServer) responseClient() {
 	for {
-		message, err := reader.ReadString('\n')
+		// Wait for the next job to come off the queue.
+		clientJob := <-tcp.channels
+
+		// CPU가 처리하는 작업
+		// Do something thats keeps the CPU buys for a whole second.
+		parseData(clientJob.data)
+
+		// 데이터 보낸 사람에게 응답 보낼 경우,
+		clientJob.conn.Write([]byte("ddd"))
+		// 특정 유저한테 응답 보낼 경우
+		// ????
+	}
+}
+
+func (tcp *TCPServer) requestClient(conn net.Conn) {
+	buf := bufio.NewReader(conn)
+
+	for {
+		// data
+		data, err := buf.ReadBytes('\n')
 		if err != nil {
-			c.conn.Close()
-			c.Server.onClientConnectionClosed(c, err)
-			return
+			fmt.Printf("Client disconnected.\n")
+			break
 		}
-		c.Server.onNewMessage(c, message)
+
+		tcp.channels <- ClientJob{data, conn}
 	}
 }
 
-// Send text message to client
-func (c *TCP_Client) Send(message string) error {
-	_, err := c.conn.Write([]byte(message))
-	return err
-}
+func (tcp *TCPServer) Run() {
+	// Client Job
+	tcp.channels = make(chan ClientJob)
+	// request의 response를 처리하는 socket list
+	go tcp.responseClient()
 
-// Send bytes to client
-func (c *TCP_Client) SendBytes(b []byte) error {
-	_, err := c.conn.Write(b)
-	return err
-}
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", tcp.port))
+	check(err, "Accepted connection.")
 
-func (c *TCP_Client) Conn() net.Conn {
-	return c.conn
-}
-
-func (c *TCP_Client) Close() error {
-	return c.conn.Close()
-}
-
-// Called right after server starts listening new client
-func (s *tcp_server) OnNewClient(callback func(c *TCP_Client)) {
-	s.onNewClientCallback = callback
-}
-
-// Called right after connection closed
-func (s *tcp_server) OnClientConnectionClosed(callback func(c *TCP_Client, err error)) {
-	s.onClientConnectionClosed = callback
-}
-
-// Called when Client receives new message
-func (s *tcp_server) OnNewMessage(callback func(c *TCP_Client, message string)) {
-	s.onNewMessage = callback
-}
-
-// Start network server
-func (s *tcp_server) Listen() {
-	listener, err := net.Listen("tcp", s.address)
-	if err != nil {
-		log.Fatal("Error starting TCP server.")
-	}
-	defer listener.Close()
+	defer ln.Close() // main 함수가 끝나기 직전에 연결 대기를 닫음
 
 	for {
-		conn, _ := listener.Accept()
-		client := &TCP_Client{
-			conn:   conn,
-			Server: s,
-		}
-		go client.listen()
-		s.onNewClientCallback(client)
+		conn, err := ln.Accept() // 클라이언트가 연결되면 TCP 연결을 리턴
+		check(err, "Accepted connection.")
+
+		// Request를 처리하기 위한 Socket List
+		go tcp.requestClient(conn)
+		go tcp.updateClient(conn)
 	}
 }
-
-// Creates new tcp server instance
-func New(address string) *tcp_server {
-	log.Println("Creating server with address", address)
-	server := &tcp_server{
-		address: address,
-	}
-
-	server.OnNewClient(func(c *TCP_Client) {})
-	server.OnNewMessage(func(c *TCP_Client, message string) {})
-	server.OnClientConnectionClosed(func(c *TCP_Client, err error) {})
-
-	return server
-}
-
-
