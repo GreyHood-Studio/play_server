@@ -10,10 +10,8 @@ type PlayerInfoPacket struct {
 	PlayerHealth	int		`json:"player_health"`
 }
 
-func parsePlayerInfo(data []byte) PlayerInfoPacket{
-	var packet PlayerInfoPacket
-	err := json.Unmarshal(data, &packet)
-	utils.CheckError(err, "json unpack error")
-
-	return packet
+func packPlayerInfo(packet PlayerInfoPacket) []byte {
+	jsonByte, err := json.Marshal(packet)
+	utils.CheckError(err, "json pack error")
+	return jsonByte
 }

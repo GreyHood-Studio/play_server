@@ -6,15 +6,17 @@ import (
 )
 
 type BulletPacket struct {
-	MsgType 	int		`json:msg_type`
-	MsgFormat	int		`json:msg_format`
-	MsgBody		[]byte	`json:msg_body`
+	PlayerID 	int		`json:"player_id"`
+	BulletID	int		`json:"bullet_id"`
+	BulletType	int		`json:"bullet_type"`
+	BulletPosX	float32	`json:"bulletpos_x"`
+	BulletPosY	float32	`json:"bulletpos_y"`
+	BulletRotX	float32	`json:"bulletrot_x"`
+	BulletRotZ	float32	`json:"bulletrot_z"`
 }
 
-func parseBullet(data []byte) BulletPacket {
-	var packet BulletPacket
-	err := json.Unmarshal(data, &packet)
-	utils.CheckError(err, "json unpack error")
-
-	return packet
+func packBullet(packet BulletPacket) []byte {
+	jsonByte, err := json.Marshal(packet)
+	utils.CheckError(err, "json pack error")
+	return jsonByte
 }

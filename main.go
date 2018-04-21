@@ -25,7 +25,7 @@ func main() {
 	)
 	//confPort := readDefaultConfig()
 
-	go route.ManageFloor()
+	go route.ManageFloor(3)
 	// 게임 서버에서 Web Server와 통신하기 위한 HTTP Server Port Open
 	mainHTTPServer(":5000")
 }

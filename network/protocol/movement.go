@@ -13,10 +13,8 @@ type MovementPacket struct {
 	PlayerRotY	float32		`json:"playerrot_y"`
 }
 
-func parseMovement(data []byte) MovementPacket{
-	var packet MovementPacket
-	err := json.Unmarshal(data, &packet)
-	utils.CheckError(err, "json unpack error")
-
-	return packet
+func packMovement(packet MovementPacket) []byte {
+	jsonByte, err := json.Marshal(packet)
+	utils.CheckError(err, "json pack error")
+	return jsonByte
 }

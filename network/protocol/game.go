@@ -1,30 +1,19 @@
 package protocol
 
-import (
-	"encoding/json"
-	"github.com/GreyHood-Studio/play_server/utils"
-)
+import "github.com/tidwall/gjson"
 
-type GameStartRequestPacket struct {
-	PlayerID 	int			`json:"player_id"`
-	StartPosX	float32		`json:"startpos_x"`
-	StartPoxY	float32		`json:"startpos_y"`
+func RequestGameStart(data []byte) []byte {
+	playerId := gjson.GetBytes(data, "player_id")
+
+	// 레디스로 해당 유저가 해당 서버에 오는게 맞는지 체크
+	if validationUser(playerId.String()) {
+
+	}
+
+	return []byte{'d'}
 }
 
-type GameStartNotifyPacket struct {
-	PlayerID 	int			`json:"player_id"`
-	StartPosX	float32		`json:"startpos_x"`
-	StartPoxY	float32		`json:"startpos_y"`
-}
+func validationUser(playerId string) bool {
 
-func parseGameStart(data []byte) GameStartRequestPacket {
-	var packet GameStartRequestPacket
-	err := json.Unmarshal(data, &packet)
-	utils.CheckError(err, "json unpack error")
-
-	return packet
-}
-
-func requestGameStart() {
-
+	return true
 }
