@@ -16,6 +16,7 @@ type gameClient struct {
 	clientId 	int
 	conn		net.Conn
 
+	// 정말 packet을 주고받을지 고민
 	packet 		chan Packet
 
 	broadcast 	chan []byte

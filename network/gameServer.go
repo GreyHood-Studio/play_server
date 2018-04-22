@@ -86,7 +86,6 @@ func (server *GameServer) handleRequest(data string) {
 }
 
 func (server *GameServer) handleClient(packet Packet) Packet {
-
 	return packet
 }
 
