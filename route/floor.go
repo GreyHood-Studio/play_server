@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"github.com/gin-gonic/gin"
 	"github.com/GreyHood-Studio/play_server/network"
-	"github.com/GreyHood-Studio/play_server/model"
 	"net/http"
 	"fmt"
 )
@@ -12,23 +11,14 @@ import (
 // 전체 floorCount
 var currentFloorCount	int
 var maxFloorCount		int
-var serverMap			map[int]gameServer
-
-type gameServer struct {
-	tcpServer		network.TCPServer
-	floor			model.Floor
-
-	tcpChan			chan string
-	floorChan		chan string
-	// mainserver에서 gameserver들에게 주는 요청
-}
+var serverMap			map[int]network.GameServer
 
 // goroutine으로 돌면서 floor들 데이터를 지속적으로 관리해주는 함수
 func ManageFloor(maxCount int) {
 	currentFloorCount = 0
 	maxFloorCount =	maxCount
 	//servers = make([]network.TCPServer, maxFloorCount)
-	serverMap = make(map[int]gameServer)
+	serverMap = make(map[int]network.GameServer)
 
 	for {
 		select {
@@ -41,14 +31,13 @@ func ManageFloor(maxCount int) {
 // Floor의 정보를 가져오는 로직
 // 만약에 Redis에 있으면 필요 없음
 func getFloor(c *gin.Context) {
-	ServerIDString := c.Param("serverId")
+	ServerIDString := c.Param("serverID")
 	serverId, _ := strconv.Atoi(ServerIDString)
 
 	// map 키 체크
 	_, exists := serverMap[serverId]
 	if exists {
-		//c.String(http.StatusOK, fmt.Sprintf("server[%d] map[%d] currentUser %d",id,
-		//	server.floor.Status.MapType, server.floor.Status.PlayerCount))
+
 	} else {
 		c.String(http.StatusNotFound, fmt.Sprintf("Don't Exist ServerId %d", serverId))
 		return
@@ -60,7 +49,7 @@ func getFloor(c *gin.Context) {
 func createFloor(c *gin.Context) {
 	// 실제 게임 서버의 층 오픈
 	// Packet 층 말고도, Floor의 정보를 보관하는 로직이 필요
-	ServerIDString := c.Param("serverId")
+	ServerIDString := c.Param("serverID")
 	portString := c.PostForm("port")
 	maxConnString := c.PostForm("maxConn")
 	port, pErr := strconv.Atoi(portString)
@@ -87,27 +76,18 @@ func createFloor(c *gin.Context) {
 	}
 	currentFloorCount += 1
 
-	// 필요할까? 고민좀 해봅시다
-	tcpChan	:= make(chan string)
-	floorChan := make(chan string)
-
-	// floorServer List를 보관하는 로직이 필요 -> Redis로 전달해야할꺼같은데?
 	server	:= network.NewServer(serverId, port, maxConn)
-	floor	:= model.Floor{}
-
 	go server.Run()
-	go floor.Run()
-
-	serverMap[serverId] = gameServer{*server, floor, tcpChan, floorChan}
+	serverMap[serverId] = *server
 
 	fmt.Println("currentFloorCount", currentFloorCount)
 	c.String(http.StatusOK,
-		fmt.Sprintf("Success Create Floor [%d] Server[%d] Port[%d]", currentFloorCount, serverId, port))
+		fmt.Sprintf("Success Create Floor[%d] Server[%d] Port[%d]", currentFloorCount, serverId, port))
 }
 
 // floor를 삭제하는 로직 ( Refresh 또는 맵 구조 변경용?
 func deleteFloor(c *gin.Context) {
-	ServerIDString := c.Param("serverId")
+	ServerIDString := c.Param("serverID")
 	serverId, err := strconv.Atoi(ServerIDString)
 	if err != nil {
 		c.String(http.StatusBadRequest,
