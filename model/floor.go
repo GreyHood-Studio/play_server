@@ -1,5 +1,10 @@
 package model
 
+import (
+	"github.com/gin-gonic/gin/json"
+	"github.com/GreyHood-Studio/play_server/utils"
+)
+
 // 한 층의 데이터 일반적인 게임에서의 room 개념과 유사
 type Floor struct {
 	FloorId		int
@@ -14,6 +19,12 @@ type FloorStatus struct {
 	MapType			int
 }
 
-func (floor *Floor) handleFloor() {
+func (floor *Floor) GetFloorStatus() []byte {
+	jsonBytes, err := json.Marshal(floor)
+	utils.CheckError(err,"error get floor status")
+	return jsonBytes
+}
+
+func (floor *Floor) HandleFloor() {
 
 }

@@ -85,10 +85,6 @@ func (server *GameServer) handleRequest(data string) {
 	}
 }
 
-func (server *GameServer) handleClient(packet Packet) Packet {
-	return packet
-}
-
 func (server *GameServer) syncPacket() {
 	// 주기적으로 계속 보내야하는 패킷에 대한 전달
 	
@@ -97,12 +93,12 @@ func (server *GameServer) syncPacket() {
 func (server *GameServer) communicate() {
 	go func() {
 		for {
-			for clientID, client := range server.clients {
+			for _, client := range server.clients {
 				select {
 				// 현재 map에 있는 list를 어케 routine을 돌게하지?
 				case packet := <- client.packet:
-					fmt.Println("communicate", clientID)
-					client.packet <- server.handleClient(packet)
+					packet = server.handlePacket(packet)
+					client.packet <- packet
 				}
 			}
 		}

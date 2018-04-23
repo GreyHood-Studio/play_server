@@ -25,33 +25,11 @@ type gameClient struct {
 	writer   	*bufio.Writer
 }
 
-// 실제 게임 오브젝트에 처리하는 로직
-// Return이 1인 경우, BroadCast
-func (gameClient *gameClient) handlePacket(packet Packet) {
-	switch packet.MsgFormat {
-	case 0: fmt.Println("ping check")
-	case 1:
-		//return protocol.RequestGameStart(packet.MsgBody), 2
-	case 2:
-	case 3:
-	}
 
-	//return []byte{'4'}, 0
-}
+func (gameClient *gameClient) handleClient(packet Packet) {
+	requestByte, sendType := packRawPacket(packet)
 
-// 에러가 아닌 패킷을 처리하는 로직
-func (gameClient *gameClient) handleClient(data []byte) ([]byte, int) {
-	// Json으로 패킷을 Unmarshal 하는 로직
-	packet := unpackPacket(data)
-	if packet.MsgType == -2 {
-		// unmarshal error
-		return []byte{'e','r','r','o','r','\n'}, -1
-	}
-
-	// packet을 모두 처리한 뒤에, receive가 필요한 경우, marshaling을 하는 로직
-	result, sendType := packRawPacket(packet)
-	
-	return result, sendType
+	gameClient.handlePacket(requestByte, sendType)
 }
 
 func (gameClient *gameClient) Read() {
@@ -72,17 +50,7 @@ func (gameClient *gameClient) Read() {
 			gameClient.exit()
 		}
 
-		result, sendType := gameClient.handleClient(data)
-
-		switch sendType {
-		// -3: fatalError -2: Error -1: No Receive error 0: broadcast, 1: request 2: response, 3: response&broadcast
-		case -3: gameClient.exit()
-		case -2: gameClient.outgoing <- []byte{'q','\n'}
-		case -1: return
-		//case -1: gameClient.outgoing <- data
-		case 0: gameClient.broadcast <- result
-		case 1: gameClient.outgoing <- result
-		}
+		gameClient.handleClient(unpackPacket(data))
 	}
 }
 
@@ -91,6 +59,17 @@ func (gameClient *gameClient) Write() {
 		gameClient.writer.Write(data)
 		gameClient.writer.Flush()
 	}
+}
+
+func (gameClient *gameClient) communicate() {
+	go func() {
+		for {
+			select {
+				case packet := <- gameClient.packet:
+					gameClient.handleClient(packet)
+			}
+		}
+	}()
 }
 
 func (gameClient *gameClient) Listen() {
