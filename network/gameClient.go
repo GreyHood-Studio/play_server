@@ -20,13 +20,14 @@ type gameClient struct {
 	eventConn	net.Conn
 
 	// ipc를 위한 채널
+	communicate	chan []byte
 	broadcast 	chan []byte
 	inputcast	chan []byte
 	inputGoing 	chan []byte
 	eventGoing 	chan []byte
 	// socket read write에 대한 처리
+	buf			[]byte
 	iReader		*bufio.Reader
-	iWriter		*bufio.Writer
 	eReader   	*bufio.Reader
 	eWriter   	*bufio.Writer
 }
@@ -45,8 +46,8 @@ func (gameClient *gameClient) inputRead() {
 
 func (gameClient *gameClient) inputWrite() {
 	for data := range gameClient.inputGoing {
-		gameClient.iWriter.Write(append(data, '\n'))
-		gameClient.iWriter.Flush()
+		gameClient.inputConn.Write(append(data, '\n'))
+		fmt.Printf("input write data %s",data)
 	}
 }
 
@@ -68,8 +69,11 @@ func (gameClient *gameClient) eventRead() {
 
 func (gameClient *gameClient) eventWrite() {
 	for data := range gameClient.eventGoing {
-		gameClient.eWriter.Write(append(data, '\n'))
-		gameClient.eWriter.Flush()
+		gameClient.buf = append(data, '\n')
+		//length, err := gameClient.eventConn.Write(data)
+		//utils.CheckError(err, "write error")
+		gameClient.eventConn.Write(gameClient.buf)
+		//gameClient.eWriter.Flush()
 	}
 }
 
@@ -84,28 +88,26 @@ func (gameClient *gameClient) exit() {
 	// exit packet
 	data := protocol.PackEvent(6, gameClient.clientId, 0)
 	println("quit client ", gameClient.clientName)
-
 	gameClient.inputConn.Close()
 	gameClient.eventConn.Close()
 	floorMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+	gameClient.communicate <- append([]byte{'q'}, []byte(gameClient.clientName)...)
 	gameClient.broadcast <- append([]byte{'2'}, []byte(data)...)
 }
 
 func (gameClient *gameClient)addEventConn(conn net.Conn) {
-	writer := bufio.NewWriter(conn)
 	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
 
-	gameClient.eWriter = writer
 	gameClient.eReader = reader
+	gameClient.eWriter = writer
 	gameClient.eventConn = conn
 	fmt.Println("addEventConn in client")
 }
 
 func (gameClient *gameClient)addInputConn(conn net.Conn) {
-	writer := bufio.NewWriter(conn)
 	reader := bufio.NewReader(conn)
 
-	gameClient.iWriter = writer
 	gameClient.iReader = reader
 	gameClient.inputConn = conn
 	fmt.Println("addInputConn in client")
@@ -116,6 +118,9 @@ func newClient(serverId int, clientName string) *gameClient {
 	gameClient := &gameClient{
 		clientName: clientName,
 		serverId: serverId,
+
+		buf: make([]byte, 1024),
+
 		broadcast: make(chan []byte),
 		inputcast: make(chan []byte),
 		eventGoing: make(chan []byte),

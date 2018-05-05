@@ -28,7 +28,7 @@ type GameServer struct {
 
 	broadcast chan []byte
 	inputcast chan []byte
-
+	communicate chan []byte
 }
 
 func (server *GameServer) writeBroadcast(data []byte) {
@@ -60,6 +60,7 @@ func (server *GameServer) createClient(clientName string) *gameClient{
 func (server *GameServer) addClient(clientName string, client *gameClient) {
 	//server의 clients list에 추가
 	client.clientId = len(server.clients) -1
+	client.communicate = server.communicate
 	server.clients[clientName] = client
 
 	fmt.Printf("m[%d]/c[%d] Add new client ID [%s]\n", server.maxConn, len(server.clients), clientName)
@@ -100,8 +101,13 @@ func (server *GameServer) clientJoin(conn net.Conn) {
 		} else if ctype == 1 {
 			client.addInputConn(conn)
 		}
-		//conn.Write(protocol.PackConnect(ctype, playerName, token))
+
+		p := protocol.PackConnect(ctype, playerName)
+		data = append([]byte{'1'}, p...)
+		data = append(data, '\n')
+		fmt.Printf("login data: %s", data)
 		conn.Write(data)
+		//conn.Write(data)
 		server.addClient(playerName, client)
 
 	} else {
@@ -112,8 +118,12 @@ func (server *GameServer) clientJoin(conn net.Conn) {
 		} else if ctype == 1 {
 			client.addInputConn(conn)
 		}
-		//conn.Write(protocol.PackConnect(ctype, playerName, token))
+		p := protocol.PackConnect(ctype, playerName)
+		data = append([]byte{'1'}, p...)
+		data = append(data, '\n')
+		fmt.Printf("login data: %s", data)
 		conn.Write(data)
+		//conn.Write(data)
 	}
 }
 
@@ -127,6 +137,10 @@ func (server *GameServer) handleBroadcast() {
 		for {
 			select {
 			// client 로부터 broadcast 데이터를 받는 곳
+			case data := <-server.communicate:
+				if data[0] == 'q' {
+					server.closeClient(string(data[1:]))
+				}
 			case data := <-server.broadcast:
 				fmt.Printf("broadcast data: %v\n%s\n", data, data)
 				server.writeBroadcast(data)
@@ -218,6 +232,7 @@ func NewServer(serverId int, port int, maxConn int) *GameServer {
 
 		broadcast: make(chan []byte),
 		inputcast: make(chan []byte),
+		communicate: make(chan []byte),
 	}
 
 	return server

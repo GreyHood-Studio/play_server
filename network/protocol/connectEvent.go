@@ -8,22 +8,23 @@ import (
 )
 
 type ConnectPacket struct {
-	connectType	int		`json:connectType`
-	playerName	[]byte	`json:playerName`
-	token		[]byte	`json:token`
+	ConnectType	int		`json:ConnectType`
+	PlayerName	string	`json:PlayerName`
+	Token		string	`json:Token`
 }
 
-func PackConnect (connType int, playerName string, token string) []byte{
-	event := ConnectPacket{connectType:connType, playerName:[]byte(playerName), token:[]byte(token)}
-	jsonByte, err := json.Marshal(event)
+func PackConnect (connType int, playerName string) []byte{
+	fmt.Println(connType, playerName)
+	packet := ConnectPacket{ConnectType:connType, PlayerName:playerName, Token:"bitcoin"}
+	jsonByte, err := json.Marshal(packet)
 	utils.CheckError(err, "json pack error")
 	return jsonByte
 }
 
 func UnpackConnect(data []byte) (int, string, string){
-	connectionType := gjson.GetBytes(data, "connectType")
-	playerName := gjson.GetBytes(data, "playerName")
-	token := gjson.GetBytes(data, "token")
+	connectionType := gjson.GetBytes(data, "ConnectType")
+	playerName := gjson.GetBytes(data, "PlayerName")
+	token := gjson.GetBytes(data, "Token")
 	fmt.Println(connectionType, playerName, token)
 
 	return int(connectionType.Int()), playerName.String(), token.String()
