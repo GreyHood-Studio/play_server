@@ -6,6 +6,7 @@ import (
 	"net"
 	"fmt"
 	"reflect"
+	"github.com/GreyHood-Studio/play_server/network/protocol"
 )
 
 type gameClient struct {
@@ -14,86 +15,112 @@ type gameClient struct {
 	// 나중에는 gameClient와 mapping 필요
 	clientName	string
 	clientId 	int
-	conn		net.Conn
+	serverId	int
+	inputConn	net.Conn
+	eventConn	net.Conn
 
-	// 정말 packet을 주고받을지 고민
-	packet 		chan Packet
-
+	// ipc를 위한 채널
 	broadcast 	chan []byte
-	outgoing 	chan []byte
-	reader   	*bufio.Reader
-	writer   	*bufio.Writer
+	inputcast	chan []byte
+	inputGoing 	chan []byte
+	eventGoing 	chan []byte
+	// socket read write에 대한 처리
+	iReader		*bufio.Reader
+	iWriter		*bufio.Writer
+	eReader   	*bufio.Reader
+	eWriter   	*bufio.Writer
 }
 
 
-func (gameClient *gameClient) handleClient(packet Packet) {
-	requestByte, sendType := packRawPacket(packet)
-
-	gameClient.handlePacket(requestByte, sendType)
-}
-
-func (gameClient *gameClient) Read() {
+func (gameClient *gameClient) inputRead() {
 	for {
-		data, err := gameClient.reader.ReadBytes('\n')
+		data, err := gameClient.iReader.ReadBytes('\n')
+		if utils.NoDeadError(err, "gameClient disconnected.\n") {
+			gameClient.exit()
+			return
+		}
+		gameClient.inputcast <- data
+	}
+}
+
+func (gameClient *gameClient) inputWrite() {
+	for data := range gameClient.inputGoing {
+		gameClient.iWriter.Write(append(data, '\n'))
+		gameClient.iWriter.Flush()
+	}
+}
+
+func (gameClient *gameClient) eventRead() {
+	for {
+		data, err := gameClient.eReader.ReadBytes('\n')
 		if utils.NoDeadError(err, "gameClient disconnected.\n") {
 			gameClient.exit()
 			return
 		}
 
 		// 디버깅용 클라이언트 데이터 체크
-		fmt.Printf("gameClient[%d] type %v msg[0] type %v msg : %s",
+		fmt.Printf("gameClient[%d] type_%v: msg[0]_type: %v msg: %s",
 			gameClient.clientId, reflect.TypeOf(data), reflect.TypeOf(data[0]), data)
 
-		//route_packet에서 모든 로직을 처리한 뒤에 반환
-		// gameClient 종료 알람
-		if data[0] == 'q' {
-			gameClient.exit()
-		}
-
-		gameClient.handleClient(unpackPacket(data))
+		go gameClient.handlePacket(data)
 	}
 }
 
-func (gameClient *gameClient) Write() {
-	for data := range gameClient.outgoing {
-		gameClient.writer.Write(data)
-		gameClient.writer.Flush()
+func (gameClient *gameClient) eventWrite() {
+	for data := range gameClient.eventGoing {
+		gameClient.eWriter.Write(append(data, '\n'))
+		gameClient.eWriter.Flush()
 	}
-}
-
-func (gameClient *gameClient) communicate() {
-	go func() {
-		for {
-			select {
-				case packet := <- gameClient.packet:
-					gameClient.handleClient(packet)
-			}
-		}
-	}()
 }
 
 func (gameClient *gameClient) Listen() {
-	go gameClient.Read()
-	go gameClient.Write()
+	// input read와 event read를 구분할 것
+	go gameClient.inputRead()
+	go gameClient.eventRead()
+	go gameClient.eventWrite()
 }
 
 func (gameClient *gameClient) exit() {
-	quit := []byte{'q','u','i','t'}
-	gameClient.broadcast <- quit
-	gameClient.conn.Close()
+	// exit packet
+	data := protocol.PackEvent(6, gameClient.clientId, 0)
+	println("quit client ", gameClient.clientName)
+
+	gameClient.inputConn.Close()
+	gameClient.eventConn.Close()
+	floorMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+	gameClient.broadcast <- append([]byte{'2'}, []byte(data)...)
 }
 
-func newClient(connection net.Conn) *gameClient {
-	writer := bufio.NewWriter(connection)
-	reader := bufio.NewReader(connection)
+func (gameClient *gameClient)addEventConn(conn net.Conn) {
+	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(conn)
+
+	gameClient.eWriter = writer
+	gameClient.eReader = reader
+	gameClient.eventConn = conn
+	fmt.Println("addEventConn in client")
+}
+
+func (gameClient *gameClient)addInputConn(conn net.Conn) {
+	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(conn)
+
+	gameClient.iWriter = writer
+	gameClient.iReader = reader
+	gameClient.inputConn = conn
+	fmt.Println("addInputConn in client")
+}
+
+func newClient(serverId int, clientName string) *gameClient {
 
 	gameClient := &gameClient{
-		conn: connection,
+		clientName: clientName,
+		serverId: serverId,
 		broadcast: make(chan []byte),
-		outgoing: make(chan []byte),
-		packet: make(chan Packet),
-		reader: reader,
-		writer: writer,
+		inputcast: make(chan []byte),
+		eventGoing: make(chan []byte),
+		inputGoing: make(chan []byte),
+		// always broadcast in game server
 	}
 
 	return gameClient

@@ -7,9 +7,8 @@ import (
 
 // 한 층의 데이터 일반적인 게임에서의 room 개념과 유사
 type Floor struct {
-	FloorId		int
 	Status		FloorStatus	// 맵에 대한 현재 상태 구조체
-	Characters	[]Player	// 맵에 존재하는 플레이어들의 리스트 ( user, enemy, character )
+	Players		map[int]Player	// 맵에 존재하는 플레이어들의 리스트 ( user, enemy, character )
 }
 
 // 한 층의 현재 상태 ( 동접, 방 관리를 위한 내용 )
@@ -27,4 +26,21 @@ func (floor *Floor) GetFloorStatus() []byte {
 
 func (floor *Floor) HandleFloor() {
 
+}
+
+func (floor *Floor) AddPlayer(playerName string, playerId int) {
+	player := Player{PlayerName:playerName}
+
+	floor.Players[playerId] = player
+}
+
+func (floor *Floor) DeletePlayer(playerId int) {
+	delete(floor.Players, playerId)
+}
+
+func NewFloor() *Floor {
+	floor := &Floor{
+		Players: make(map[int]Player),
+	}
+	return floor
 }

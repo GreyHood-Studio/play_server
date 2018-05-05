@@ -9,13 +9,11 @@ import (
 )
 
 // 전체 floorCount
-var currentFloorCount	int
 var maxFloorCount		int
 var serverMap			map[int]network.GameServer
 
 // goroutine으로 돌면서 floor들 데이터를 지속적으로 관리해주는 함수
 func ManageFloor(maxCount int) {
-	currentFloorCount = 0
 	maxFloorCount =	maxCount
 	//servers = make([]network.TCPServer, maxFloorCount)
 	serverMap = make(map[int]network.GameServer)
@@ -55,6 +53,7 @@ func createFloor(c *gin.Context) {
 	port, pErr := strconv.Atoi(portString)
 	serverId, sErr := strconv.Atoi(ServerIDString)
 	maxConn, mErr := strconv.Atoi(maxConnString)
+
 	if pErr != nil || sErr != nil || mErr != nil {
 		c.String(http.StatusBadRequest,
 			fmt.Sprintf("Invalid Parameter create Floor Server[%d] Port[%d]", serverId, port))
@@ -62,7 +61,8 @@ func createFloor(c *gin.Context) {
 	}
 	fmt.Println(port, serverId, maxConn)
 
-	if currentFloorCount >= maxFloorCount {
+	// server create validation logic
+	if len(serverMap) >= maxFloorCount {
 		c.String(http.StatusNotAcceptable, fmt.Sprintf("Already Max Server Count"))
 		return
 	}
@@ -74,15 +74,17 @@ func createFloor(c *gin.Context) {
 			fmt.Sprintf("Already Exist Server Port %d OR ServerId %d", port, serverId))
 		return
 	}
-	currentFloorCount += 1
+	// server validation logic complete
 
 	server	:= network.NewServer(serverId, port, maxConn)
 	go server.Run()
+	// 서버 map에 serverID를 기준으로 서버를 생성
 	serverMap[serverId] = *server
 
-	fmt.Println("currentFloorCount", currentFloorCount)
+	// 현재 생성된 서버의 수
+	fmt.Printf("currentFloorCount %d\n", len(serverMap))
 	c.String(http.StatusOK,
-		fmt.Sprintf("Success Create Floor[%d] Server[%d] Port[%d]", currentFloorCount, serverId, port))
+		fmt.Sprintf("Success Create Floor[%d] Server[%d] Port[%d]", len(serverMap), serverId, port))
 }
 
 // floor를 삭제하는 로직 ( Refresh 또는 맵 구조 변경용?
@@ -94,8 +96,6 @@ func deleteFloor(c *gin.Context) {
 			fmt.Sprintf("Invalid Parameter Delete Floor ServerId %d", serverId))
 		return
 	}
-
 	delete(serverMap, serverId)
 	c.String(http.StatusOK, fmt.Sprintf("Delete Floor Floor %d",  serverId))
-	currentFloorCount -= 1
 }
