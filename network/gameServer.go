@@ -146,6 +146,7 @@ func (server *GameServer) handleBroadcast() {
 				server.writeBroadcast(data)
 			case data := <-server.inputcast:
 				// route 역할만 수행
+				fmt.Printf("inputcast data: %v\n%s\n", data, data)
 				server.writeInputcast(data)
 			}
 		}

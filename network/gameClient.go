@@ -46,7 +46,7 @@ func (gameClient *gameClient) inputRead() {
 
 func (gameClient *gameClient) inputWrite() {
 	for data := range gameClient.inputGoing {
-		gameClient.inputConn.Write(append(data, '\n'))
+		gameClient.inputConn.Write(data)
 		fmt.Printf("input write data %s",data)
 	}
 }
@@ -80,6 +80,7 @@ func (gameClient *gameClient) eventWrite() {
 func (gameClient *gameClient) Listen() {
 	// input read와 event read를 구분할 것
 	go gameClient.inputRead()
+	go gameClient.inputWrite()
 	go gameClient.eventRead()
 	go gameClient.eventWrite()
 }
