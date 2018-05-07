@@ -3,7 +3,7 @@ package main
 import (
 	"go.uber.org/zap"
 	"github.com/gin-gonic/gin"
-	"github.com/GreyHood-Studio/play_server/route"
+	"github.com/GreyHood-Studio/play_server/router"
 )
 
 func mainHTTPServer(port string) {
@@ -11,7 +11,7 @@ func mainHTTPServer(port string) {
 	// gin.DisableConsoleColor()
 	r := gin.Default()
 
-	route.SetAPIRoute(r)
+	router.SetAPIRoute(r)
 
 	r.Run(port)
 }
@@ -25,7 +25,7 @@ func main() {
 	)
 	//confPort := readDefaultConfig()
 
-	go route.ManageFloor(3)
+	go router.ManageFloor(3)
 	// 게임 서버에서 Web Server와 통신하기 위한 HTTP Server Port Open
 	mainHTTPServer(":5000")
 }

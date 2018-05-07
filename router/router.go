@@ -1,9 +1,9 @@
-package route
+package router
 
 import "github.com/gin-gonic/gin"
 
 
-// route package는 gameserver들을 컨트롤 하기 위한 로직
+// router package는 gameserver들을 컨트롤 하기 위한 로직
 func SetAPIRoute(router *gin.Engine) {
 	// 서버의 상태를 가지고 오는 정보
 	//router.GET("/floors", getServerStatus)
@@ -21,11 +21,5 @@ func SetAPIRoute(router *gin.Engine) {
 	{
 		// 유저가 접속할 ip와 port번호를 전달
 		user.GET("/:userID", getUserAccessInfo)
-	}
-
-	// 몬스터, 게임 내에 설정 정보 변경등에 대한 내용
-	gameManager := router.Group("/manager")
-	{
-		gameManager.GET("/:serverID", regenMonster)
 	}
 }
