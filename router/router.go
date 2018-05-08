@@ -1,14 +1,22 @@
 package router
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"net/http"
+	"fmt"
+)
 
+func healthCheck(c *gin.Context) {
+	c.String(http.StatusOK, fmt.Sprintf("Health Play Server"))
+}
 
 // router package는 gameserver들을 컨트롤 하기 위한 로직
 func SetAPIRoute(router *gin.Engine) {
 	// 서버의 상태를 가지고 오는 정보
 	//router.GET("/floors", getServerStatus)
+	router.GET("/ping", healthCheck)
 
-	// Simple group: v1
+	// Floor 관리
 	floor := router.Group("/floor")
 	{
 		floor.GET("/:serverID", getFloor)
