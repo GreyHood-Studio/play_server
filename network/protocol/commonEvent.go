@@ -4,7 +4,7 @@ import (
 	"github.com/tidwall/gjson"
 	"fmt"
 	"encoding/json"
-	"github.com/GreyHood-Studio/play_server/utils"
+	"github.com/GreyHood-Studio/server_util/error"
 )
 
 type CommonEvent struct {
@@ -17,7 +17,7 @@ func PackEvent(eventType int, playerId int, objectId int) []byte{
 	packet := CommonEvent{EventType:eventType, PlayerId:playerId, ObjectId:objectId}
 
 	jsonByte, err := json.Marshal(packet)
-	utils.CheckError(err, "json pack error")
+	error.CheckError(err, "json pack error")
 	return jsonByte
 }
 

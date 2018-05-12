@@ -1,12 +1,12 @@
 package network
 
 import (
-	"github.com/GreyHood-Studio/play_server/utils"
 	"bufio"
 	"net"
 	"fmt"
 	"reflect"
 	"github.com/GreyHood-Studio/play_server/network/protocol"
+	"github.com/GreyHood-Studio/server_util/error"
 )
 
 type gameClient struct {
@@ -36,7 +36,7 @@ type gameClient struct {
 func (gameClient *gameClient) inputRead() {
 	for {
 		data, err := gameClient.iReader.ReadBytes('\n')
-		if utils.NoDeadError(err, "gameClient disconnected.\n") {
+		if error.NoDeadError(err, "gameClient disconnected.\n") {
 			gameClient.exit()
 			return
 		}
@@ -54,7 +54,7 @@ func (gameClient *gameClient) inputWrite() {
 func (gameClient *gameClient) eventRead() {
 	for {
 		data, err := gameClient.eReader.ReadBytes('\n')
-		if utils.NoDeadError(err, "gameClient disconnected.\n") {
+		if error.NoDeadError(err, "gameClient disconnected.\n") {
 			gameClient.exit()
 			return
 		}
@@ -71,7 +71,7 @@ func (gameClient *gameClient) eventWrite() {
 	for data := range gameClient.eventGoing {
 		gameClient.buf = append(data, '\n')
 		//length, err := gameClient.eventConn.Write(data)
-		//utils.CheckError(err, "write error")
+		//error.CheckError(err, "write error")
 		gameClient.eventConn.Write(gameClient.buf)
 		//gameClient.eWriter.Flush()
 	}

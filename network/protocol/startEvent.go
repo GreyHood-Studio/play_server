@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"encoding/json"
-	"github.com/GreyHood-Studio/play_server/utils"
+	"github.com/GreyHood-Studio/server_util/error"
 	"github.com/tidwall/gjson"
 )
 
@@ -16,7 +16,7 @@ func PackStart(event StartEvent) []byte{
 	dumpEvent := CommonEvent{EventType:0, PlayerId:0, ObjectId:0}
 	event.HistoryList = append(event.HistoryList, dumpEvent)
 	jsonByte, err := json.Marshal(event)
-	utils.CheckError(err, "json pack error")
+	error.CheckError(err, "json pack error")
 	return jsonByte
 }
 

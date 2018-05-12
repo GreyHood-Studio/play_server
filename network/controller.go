@@ -4,6 +4,12 @@ import (
 	"github.com/GreyHood-Studio/play_server/network/protocol"
 )
 
+// key = server_id, value: bullet_id
+var bulletID map[int]int
+
+func init()  {
+	bulletID = make(map[int]int)
+}
 
 func (gameClient *gameClient) handleCommon(event protocol.CommonEvent) {
 	switch event.EventType {
@@ -14,6 +20,12 @@ func (gameClient *gameClient) handleCommon(event protocol.CommonEvent) {
 	case 5: // deadplayer
 	case 6: // exitplayer
 	}
+}
+
+func (gameClient *gameClient) handleBullet(bulletBytes []byte) []byte{
+	bulletPacket := protocol.AssignBulletID(bulletID[gameClient.serverId],bulletBytes)
+	bulletID[gameClient.serverId]++
+	return bulletPacket
 }
 
 func (gameClient *gameClient) handlePlayer(event protocol.PlayerEvent) {
@@ -54,6 +66,9 @@ func (gameClient *gameClient) handlePacket(packetData []byte) {
 		sendType = 1
 		data = gameClient.handleStart(packet)
 		msg = append([]byte{'4'}, data...)
+	case '5':
+		data := gameClient.handleBullet(packetData[1:])
+		msg = append([]byte{'5'}, data...)
 	}
 
 	// queue를 써야할까?

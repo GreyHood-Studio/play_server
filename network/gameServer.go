@@ -3,7 +3,7 @@ package network
 import (
 	"net"
 	"fmt"
-	"github.com/GreyHood-Studio/play_server/utils"
+	"github.com/GreyHood-Studio/server_util/error"
 	"github.com/GreyHood-Studio/play_server/network/protocol"
 	"github.com/GreyHood-Studio/play_server/model"
 )
@@ -33,7 +33,6 @@ type GameServer struct {
 
 func (server *GameServer) writeBroadcast(data []byte) {
 	// loop문을 도는데 안도는게 베스트로 보임
-	// if문 부하 방지
 	for _, client := range server.clients {
 		client.eventGoing <- data
 	}
@@ -41,7 +40,6 @@ func (server *GameServer) writeBroadcast(data []byte) {
 
 func (server *GameServer) writeInputcast(data []byte) {
 	// loop문을 도는데 안도는게 베스트로 보임
-	// if문 부하 방지
 	for _, client := range server.clients {
 		client.inputGoing <- data
 	}
@@ -87,6 +85,7 @@ func (server *GameServer) clientJoin(conn net.Conn) {
 		fmt.Println("connected or disconnect socket in join")
 		return
 	}
+
 	ctype, playerName, token := protocol.UnpackConnect(data)
 	if err != nil && server.validateClient(playerName, token){
 		fmt.Printf("Error Connect client Data [%s][%d]\n", length, string(data[:]))
@@ -176,27 +175,26 @@ func (server *GameServer) Run() {
 	server.listen()
 
 	eln, err := net.Listen("tcp", fmt.Sprintf(":%d", server.EventPort))
-	utils.CheckError(err, "Listen Socket Bind Error Check.")
+	error.CheckError(err, "Listen Socket Bind Error Check.")
 	defer eln.Close() // main 함수가 끝나기 직전에 연결 대기를 닫음
 	iln, err := net.Listen("tcp", fmt.Sprintf(":%d", server.InputPort))
-	utils.CheckError(err, "Listen Socket Bind Error Check.")
+	error.CheckError(err, "Listen Socket Bind Error Check.")
 	defer iln.Close() // main 함수가 끝나기 직전에 연결 대기를 닫음
 	fmt.Printf("tcp server listen port: [%d][%d]\n", server.EventPort, server.InputPort)
 
 	// event socket accpet
-
 	go func() {
 		for {
 			// Connection이 발생하면, connection을 server.joins 채널로 보냄
 			econn, err := eln.Accept()
-			utils.CheckError(err, "Accepted Event Socket connection Error.")
+			error.CheckError(err, "Accepted Event Socket connection Error.")
 			server.eJoins <- econn
 		}
 	}()
 
 	for {
 		iconn, err := iln.Accept()
-		utils.CheckError(err, "Accepted Input Socket connection Error.")
+		error.CheckError(err, "Accepted Input Socket connection Error.")
 		server.iJoins <- iconn
 	}
 }
