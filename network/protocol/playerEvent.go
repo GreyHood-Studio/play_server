@@ -2,6 +2,8 @@ package protocol
 
 import (
 	"github.com/tidwall/gjson"
+	"encoding/json"
+	"github.com/GreyHood-Studio/server_util/error"
 	"fmt"
 )
 
@@ -10,6 +12,12 @@ type PlayerEvent struct {
 	PlayerId	int		`json:PlayerId`
 	SpawnId		int		`json:SpawnId`
 	Items		int		`json:Items`
+}
+
+func PackPlayer (event PlayerEvent) []byte{
+	jsonByte, err := json.Marshal(event)
+	error.CheckError(err, "json pack error")
+	return jsonByte
 }
 
 func UnpackPlayer(data []byte) PlayerEvent {

@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"github.com/GreyHood-Studio/server_util/error"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 type StartEvent struct {
 	MapId		int				`json:MapId`
 	PlayerList	[]PlayerEvent	`json:PlayerList`
 	HistoryList []CommonEvent	`json:HistoryList`
+}
+
+func assignNewPlayerId(playerId int, data []byte) []byte {
+	reset, err := sjson.SetBytes(data, "PlayerList.0.player_id", playerId)
+	error.NoDeadError(err, "assign bullet id error")
+	return reset
 }
 
 func PackStart(event StartEvent) []byte{
@@ -20,7 +27,7 @@ func PackStart(event StartEvent) []byte{
 	return jsonByte
 }
 
-func UnpackStart(data []byte) StartEvent {
+func UnpackStart(data []byte) (StartEvent) {
 	mapId := gjson.GetBytes(data, "MapId")
 	playerName := gjson.GetBytes(data, "PlayerList.0.player_name")
 	playerId := gjson.GetBytes(data, "PlayerList.0.player_id")

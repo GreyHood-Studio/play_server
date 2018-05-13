@@ -29,7 +29,7 @@ func (floor *Floor) HandleFloor() {
 }
 
 func (floor *Floor) AddPlayer(playerName string, playerId int) {
-	player := Player{PlayerName:playerName}
+	player := Player{PlayerName:playerName, PlayerId:playerId}
 
 	floor.Players[playerId] = player
 }

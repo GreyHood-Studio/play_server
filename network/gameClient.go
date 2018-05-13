@@ -29,7 +29,6 @@ type gameClient struct {
 	buf			[]byte
 	iReader		*bufio.Reader
 	eReader   	*bufio.Reader
-	eWriter   	*bufio.Writer
 }
 
 
@@ -47,7 +46,7 @@ func (gameClient *gameClient) inputRead() {
 func (gameClient *gameClient) inputWrite() {
 	for data := range gameClient.inputGoing {
 		gameClient.inputConn.Write(data)
-		fmt.Printf("input write data %s",data)
+		//fmt.Printf("input write data %s",data)
 	}
 }
 
@@ -70,10 +69,9 @@ func (gameClient *gameClient) eventRead() {
 func (gameClient *gameClient) eventWrite() {
 	for data := range gameClient.eventGoing {
 		gameClient.buf = append(data, '\n')
-		//length, err := gameClient.eventConn.Write(data)
-		//error.CheckError(err, "write error")
 		gameClient.eventConn.Write(gameClient.buf)
-		//gameClient.eWriter.Flush()
+		fmt.Printf("eventWrite [%d] %s",gameClient.clientId, gameClient.buf)
+		gameClient.buf = nil
 	}
 }
 
@@ -88,20 +86,21 @@ func (gameClient *gameClient) Listen() {
 func (gameClient *gameClient) exit() {
 	// exit packet
 	data := protocol.PackEvent(6, gameClient.clientId, 0)
+
 	println("quit client ", gameClient.clientName)
+	floorMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+
 	gameClient.inputConn.Close()
 	gameClient.eventConn.Close()
-	floorMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+
 	gameClient.communicate <- append([]byte{'q'}, []byte(gameClient.clientName)...)
 	gameClient.broadcast <- append([]byte{'2'}, []byte(data)...)
 }
 
 func (gameClient *gameClient)addEventConn(conn net.Conn) {
 	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
 
 	gameClient.eReader = reader
-	gameClient.eWriter = writer
 	gameClient.eventConn = conn
 	fmt.Println("addEventConn in client")
 }
@@ -120,7 +119,7 @@ func newClient(serverId int, clientName string) *gameClient {
 		clientName: clientName,
 		serverId: serverId,
 
-		buf: make([]byte, 1024),
+		buf: make([]byte, 2048),
 
 		broadcast: make(chan []byte),
 		inputcast: make(chan []byte),

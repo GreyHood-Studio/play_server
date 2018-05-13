@@ -141,11 +141,11 @@ func (server *GameServer) handleBroadcast() {
 					server.closeClient(string(data[1:]))
 				}
 			case data := <-server.broadcast:
-				fmt.Printf("broadcast data: %v\n%s\n", data, data)
+				fmt.Printf("broadcast data: %v\n%s", data, data)
 				server.writeBroadcast(data)
 			case data := <-server.inputcast:
 				// router 역할만 수행
-				fmt.Printf("inputcast data: %v\n%s\n", data, data)
+				//fmt.Printf("inputcast data: %v\n%s", data, data)
 				server.writeInputcast(data)
 			}
 		}
