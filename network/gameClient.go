@@ -88,7 +88,7 @@ func (gameClient *gameClient) exit() {
 	data := protocol.PackEvent(6, gameClient.clientId, 0)
 
 	println("quit client ", gameClient.clientName)
-	floorMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+	roomMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
 
 	gameClient.inputConn.Close()
 	gameClient.eventConn.Close()

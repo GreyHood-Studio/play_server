@@ -1,0 +1,40 @@
+# server config
+server:
+  port: 5000
+  maxroom: 3
+  debug: true
+
+# database config
+database:
+  # user database
+  - use: "user"
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    database: "user"
+  # game database
+  - use: "game"
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    database: "game"
+
+# server communicate data
+cache:
+  # running server coordinator
+  # auto scaling, server managing
+  - use: "cache"
+    session: 10
+    address: "localhost:6379"
+    password: ""
+    # signed in user session
+  - use: "session"
+    session: 10
+    address: "localhost:6379"
+    password: ""
+
+# set logs
+#log:
+#  path: ""

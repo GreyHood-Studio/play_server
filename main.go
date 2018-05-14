@@ -1,31 +1,21 @@
 package main
 
 import (
-	"go.uber.org/zap"
-	"github.com/gin-gonic/gin"
 	"github.com/GreyHood-Studio/play_server/router"
+	"github.com/GreyHood-Studio/server_util/setup"
+	"fmt"
 )
 
-func mainHTTPServer(port string) {
-	// Disable Console Color
-	// gin.DisableConsoleColor()
-	r := gin.Default()
-
-	router.SetAPIRoute(r)
-
-	r.Run(port)
-}
-
 func main() {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync() // flushes buffer, if any
-	logger.Info("failed to fetch URL",
-		// Structured context as strongly typed Field values.
-		zap.String("test", "testdata"),
-	)
+	config := setup.NewConfig()
+	fmt.Println(config)
+
+	setup.ConnectDatabase(config.Database)
+	r := setup.ConnectRouter(config.Cache)
 	//confPort := readDefaultConfig()
 
-	go router.ManageFloor(3)
+	router.SetAPIRoute(r)
+	go router.ManageFoom(3)
 	// 게임 서버에서 Web Server와 통신하기 위한 HTTP Server Port Open
-	mainHTTPServer(":5000")
+	r.Run(fmt.Sprint(":", config.Server.Port))
 }

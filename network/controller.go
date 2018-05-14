@@ -33,7 +33,7 @@ func (gameClient *gameClient) handleBullet(bulletBytes []byte) []byte{
 
 func (gameClient *gameClient) handleStart(startBytes []byte) ([]byte, []byte){
 	startEvent := protocol.UnpackStart(startBytes)
-	players := floorMap[gameClient.serverId].Players
+	players := roomMap[gameClient.serverId].Players
 	for _, value := range players {
 		// 기존 유저의 리스트를 받아옴
 		fmt.Printf("current user[%d]: %s",value.PlayerId, value.PlayerName)
@@ -44,7 +44,7 @@ func (gameClient *gameClient) handleStart(startBytes []byte) ([]byte, []byte){
 	// game client에 client id 할당
 	gameClient.clientId = playerID[gameClient.serverId]
 	// game floor의 player list에 id 할당
-	floorMap[gameClient.serverId].AddPlayer(gameClient.clientName, gameClient.clientId)
+	roomMap[gameClient.serverId].AddPlayer(gameClient.clientName, gameClient.clientId)
 	fmt.Println("assign new player id[",playerID[gameClient.serverId],"]")
 	// 보낼 데이터에 id랑 player name 할당
 	startEvent.PlayerList[0].PlayerId = playerID[gameClient.serverId]

@@ -17,11 +17,11 @@ func SetAPIRoute(router *gin.Engine) {
 	router.GET("/ping", healthCheck)
 
 	// Floor 관리
-	floor := router.Group("/floor")
+	floor := router.Group("/room")
 	{
-		floor.GET("/:serverID", getFloor)
-		floor.POST("/:serverID", createFloor)
-		floor.DELETE("/:serverID", deleteFloor)
+		floor.GET("/:serverID", getRoom)
+		floor.POST("/:serverID", createRoom)
+		floor.DELETE("/:serverID", deleteRoom)
 	}
 
 	// 유저 정보 입력 삭제, 세션 종료, 강제 퇴장등의 기능

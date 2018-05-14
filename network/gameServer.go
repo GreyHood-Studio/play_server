@@ -8,7 +8,7 @@ import (
 	"github.com/GreyHood-Studio/play_server/model"
 )
 
-var floorMap map[int]*model.Floor
+var roomMap map[int]*model.Room
 
 // 게임 서버가 곧 floor다. 맞지?
 // client connection에 대한 정보만 전달하면 됨
@@ -211,11 +211,11 @@ func (server *GameServer) Status() (int, int, int, int){
 
 func NewServer(serverId int, port int, maxConn int) *GameServer {
 	// 서버 초기화
-	if floorMap == nil {
-		floorMap = make(map[int]*model.Floor)
+	if roomMap == nil {
+		roomMap = make(map[int]*model.Room)
 	}
 
-	floorMap[serverId] = model.NewFloor()
+	roomMap[serverId] = model.NewRoom()
 
 	server := &GameServer{
 		ServerId: serverId,
