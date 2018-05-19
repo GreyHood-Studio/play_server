@@ -1,33 +1,28 @@
 package protocol
 
 import (
-	"github.com/tidwall/gjson"
-	"fmt"
 	"encoding/json"
-	"github.com/GreyHood-Studio/server_util/error"
+	"github.com/GreyHood-Studio/server_util/checker"
 )
 
 type CommonEvent struct {
-	EventType	int		`json:EventType`
-	PlayerId	int		`json:PlayerId`
-	ObjectId	int		`json:ObjectId`
+	EventType	int		`json:"EventType"`
+	PlayerId	int		`json:"PlayerId"`
+	ObjectId	int		`json:"ObjectId,omitempty"`
 }
 
 func PackEvent(eventType int, playerId int, objectId int) []byte{
 	packet := CommonEvent{EventType:eventType, PlayerId:playerId, ObjectId:objectId}
 
 	jsonByte, err := json.Marshal(packet)
-	error.CheckError(err, "json pack error")
+	checker.CheckError(err, "json pack error")
 	return jsonByte
 }
 
 func UnpackEvent(data []byte) CommonEvent {
-	eventType := gjson.GetBytes(data, "EventType")
-	playerId := gjson.GetBytes(data, "PlayerId")
-	objectId := gjson.GetBytes(data, "ObjectId")
-	fmt.Println(eventType, playerId, objectId)
+	var packet CommonEvent
+	err := json.Unmarshal(data, &packet)
+	checker.CheckError(err, "unpack common packet")
 
-	connectEvent := CommonEvent{ EventType:int(eventType.Int()),
-		PlayerId:int(playerId.Int()), ObjectId:int(objectId.Int()) }
-	return connectEvent
+	return packet
 }

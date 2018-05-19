@@ -2,41 +2,28 @@ package protocol
 
 import (
 	"encoding/json"
-	"github.com/GreyHood-Studio/server_util/error"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
+	"github.com/GreyHood-Studio/server_util/checker"
+	"github.com/GreyHood-Studio/play_server/model"
 )
 
 type StartEvent struct {
-	MapId		int				`json:MapId`
-	PlayerList	[]PlayerEvent	`json:PlayerList`
-	HistoryList []CommonEvent	`json:HistoryList`
-}
-
-func assignNewPlayerId(playerId int, data []byte) []byte {
-	reset, err := sjson.SetBytes(data, "PlayerList.0.player_id", playerId)
-	error.NoDeadError(err, "assign bullet id error")
-	return reset
+	MapId			int				`json:"MapId"`
+	SpawnId			int				`json:"SpawnId"`
+	ConnectionInfo	[]*model.Player	`json:"ConnectInfos"`
 }
 
 func PackStart(event StartEvent) []byte{
-	dumpEvent := CommonEvent{EventType:0, PlayerId:0, ObjectId:0}
-	event.HistoryList = append(event.HistoryList, dumpEvent)
 	jsonByte, err := json.Marshal(event)
-	error.CheckError(err, "json pack error")
+	checker.CheckError(err, "json pack error")
 	return jsonByte
 }
 
-func UnpackStart(data []byte) (StartEvent) {
-	mapId := gjson.GetBytes(data, "MapId")
-	playerName := gjson.GetBytes(data, "PlayerList.0.player_name")
-	playerId := gjson.GetBytes(data, "PlayerList.0.player_id")
-	spawnId := gjson.GetBytes(data, "PlayerList.0.spawn_position")
+func NewStartPacket(mapId int, spawnId int, playerCount int) *StartEvent{
+	startEvent := &StartEvent{
+		MapId: mapId,
+		SpawnId: spawnId,
+		ConnectionInfo: make([]*model.Player, playerCount),
+	}
 
-	playerEvent := PlayerEvent{
-		PlayerName: playerName.String(), PlayerId:int(playerId.Int()), SpawnId:int(spawnId.Int()) }
-
-	packet := StartEvent{ MapId:int(mapId.Int())}
-	packet.PlayerList = append(packet.PlayerList, playerEvent)
-	return packet
+	return startEvent
 }

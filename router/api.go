@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"fmt"
+	"github.com/GreyHood-Studio/play_server/controller"
 )
 
 func healthCheck(c *gin.Context) {
@@ -11,23 +12,23 @@ func healthCheck(c *gin.Context) {
 }
 
 // router package는 gameserver들을 컨트롤 하기 위한 로직
-func SetAPIRoute(router *gin.Engine) {
+func SetAPIRoute(router *gin.Engine, maxRoomCount int) {
 	// 서버의 상태를 가지고 오는 정보
 	//router.GET("/floors", getServerStatus)
 	router.GET("/ping", healthCheck)
 
 	// Floor 관리
-	floor := router.Group("/room")
+	roomGroup := router.Group("/room")
 	{
-		floor.GET("/:serverID", getRoom)
-		floor.POST("/:serverID", createRoom)
-		floor.DELETE("/:serverID", deleteRoom)
+		roomCtrl := controller.NewRoomController(maxRoomCount)
+		roomGroup.GET("/:serverID", roomCtrl.GetRoom)
+		roomGroup.POST("/:serverID", roomCtrl.CreateRoom)
+		roomGroup.DELETE("/:serverID", roomCtrl.DeleteRoom)
 	}
 
-	// 유저 정보 입력 삭제, 세션 종료, 강제 퇴장등의 기능
-	user := router.Group("/user")
-	{
-		// 유저가 접속할 ip와 port번호를 전달
-		user.GET("/:userID", getUserAccessInfo)
-	}
+	// User 강퇴 및 해당 User가 접속해 있는지 확인하기 위한 로직
+	//userGroup := router.Group("/user")
+	//{
+	//
+	//}
 }

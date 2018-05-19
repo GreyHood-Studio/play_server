@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"net"
 	"fmt"
-	"reflect"
 	"github.com/GreyHood-Studio/play_server/network/protocol"
-	"github.com/GreyHood-Studio/server_util/error"
+	"github.com/GreyHood-Studio/server_util/checker"
+	"github.com/GreyHood-Studio/play_server/model"
 )
 
 type gameClient struct {
@@ -29,13 +29,14 @@ type gameClient struct {
 	buf			[]byte
 	iReader		*bufio.Reader
 	eReader   	*bufio.Reader
-}
 
+	room		*model.Room
+}
 
 func (gameClient *gameClient) inputRead() {
 	for {
 		data, err := gameClient.iReader.ReadBytes('\n')
-		if error.NoDeadError(err, "gameClient disconnected.\n") {
+		if checker.NoDeadError(err, "gameClient disconnected.\n") {
 			gameClient.exit()
 			return
 		}
@@ -53,15 +54,13 @@ func (gameClient *gameClient) inputWrite() {
 func (gameClient *gameClient) eventRead() {
 	for {
 		data, err := gameClient.eReader.ReadBytes('\n')
-		if error.NoDeadError(err, "gameClient disconnected.\n") {
+		if checker.NoDeadError(err, "gameClient disconnected.\n") {
 			gameClient.exit()
 			return
 		}
 
 		// 디버깅용 클라이언트 데이터 체크
-		fmt.Printf("gameClient[%d] type_%v: msg[0]_type: %v msg: %s",
-			gameClient.clientId, reflect.TypeOf(data), reflect.TypeOf(data[0]), data)
-
+		fmt.Printf("eventRead[%d] %s", gameClient.clientId, data)
 		go gameClient.handlePacket(data)
 	}
 }
@@ -88,7 +87,7 @@ func (gameClient *gameClient) exit() {
 	data := protocol.PackEvent(6, gameClient.clientId, 0)
 
 	println("quit client ", gameClient.clientName)
-	roomMap[gameClient.serverId].DeletePlayer(gameClient.clientId)
+	gameClient.room.DeletePlayer(gameClient.clientId)
 
 	gameClient.inputConn.Close()
 	gameClient.eventConn.Close()
@@ -97,7 +96,7 @@ func (gameClient *gameClient) exit() {
 	gameClient.broadcast <- append([]byte{'2'}, []byte(data)...)
 }
 
-func (gameClient *gameClient)addEventConn(conn net.Conn) {
+func (gameClient *gameClient) addEventConn(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	gameClient.eReader = reader
@@ -105,7 +104,7 @@ func (gameClient *gameClient)addEventConn(conn net.Conn) {
 	fmt.Println("addEventConn in client")
 }
 
-func (gameClient *gameClient)addInputConn(conn net.Conn) {
+func (gameClient *gameClient) addInputConn(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
 	gameClient.iReader = reader
@@ -113,7 +112,7 @@ func (gameClient *gameClient)addInputConn(conn net.Conn) {
 	fmt.Println("addInputConn in client")
 }
 
-func newClient(serverId int, clientName string) *gameClient {
+func newClient(serverId int, clientName string, room *model.Room) *gameClient {
 
 	gameClient := &gameClient{
 		clientName: clientName,
@@ -126,6 +125,7 @@ func newClient(serverId int, clientName string) *gameClient {
 		eventGoing: make(chan []byte),
 		inputGoing: make(chan []byte),
 		// always broadcast in game server
+		room: room,
 	}
 
 	return gameClient

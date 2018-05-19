@@ -3,16 +3,14 @@ package network
 import (
 	"net"
 	"fmt"
-	"github.com/GreyHood-Studio/server_util/error"
+	"github.com/GreyHood-Studio/server_util/checker"
 	"github.com/GreyHood-Studio/play_server/network/protocol"
 	"github.com/GreyHood-Studio/play_server/model"
+	"errors"
+	"bufio"
 )
 
-var roomMap map[int]*model.Room
-
-// 게임 서버가 곧 floor다. 맞지?
-// client connection에 대한 정보만 전달하면 됨
-// client는 gameServer의 id인 floor에 접근하면 됨
+// 게임 서버의 네트워크 정보
 type GameServer struct {
 	// 네트워크 로직과 관련 있는 곳
 	ServerId	int
@@ -23,12 +21,16 @@ type GameServer struct {
 	// string은 clientName clients의 count는 len(server.clients)
 	iJoins chan net.Conn
 	eJoins chan net.Conn
+	// game client들의 리스트 string은 player_name
 	clients map[string]*gameClient
+	// 완전히 접속하기 직전의 임시 클라이언트
 	tempClients map[string]*gameClient
 
 	broadcast chan []byte
 	inputcast chan []byte
 	communicate chan []byte
+
+	Room *model.Room
 }
 
 func (server *GameServer) writeBroadcast(data []byte) {
@@ -45,9 +47,10 @@ func (server *GameServer) writeInputcast(data []byte) {
 	}
 }
 
+// Create Client 생성
 func (server *GameServer) createClient(clientName string) *gameClient{
 	// 새로운 클라이언트를 생성
-	client := newClient(server.ServerId, clientName)
+	client := newClient(server.ServerId, clientName, server.Room)
 
 	client.clientName = clientName
 	server.tempClients[clientName] = client
@@ -57,7 +60,6 @@ func (server *GameServer) createClient(clientName string) *gameClient{
 
 func (server *GameServer) addClient(clientName string, client *gameClient) {
 	//server의 clients list에 추가
-	client.clientId = len(server.clients) -1
 	client.communicate = server.communicate
 	server.clients[clientName] = client
 
@@ -80,47 +82,54 @@ func (server *GameServer) addClient(clientName string, client *gameClient) {
 func (server *GameServer) clientJoin(conn net.Conn) {
 	data := make([]byte, 1024)
 
-	length, err := conn.Read(data)
-	if length == 0 {
-		fmt.Println("connected or disconnect socket in join")
+	reader := bufio.NewReader(conn)
+	data, err := reader.ReadBytes('\n')
+	if checker.NoDeadError(err, "gameClient disconnected.\n") {
+		conn.Close()
+	}
+	//length, err := conn.Read(data)
+	//if length == 0 {
+	//	fmt.Println("connected or disconnect socket in join")
+	//	return
+	//}
+	if data[0] != '0' {
+		checker.NoDeadError(errors.New("client_init_packet_format_error"), string(data))
+	}
+
+	initPacket := protocol.UnpackInitPacket(data[1:])
+	if err != nil && server.validateClient(initPacket.PlayerName, initPacket.Token){
+		fmt.Printf("Error Connect client Data [%s]\n", string(data[:]))
 		return
 	}
 
-	ctype, playerName, token := protocol.UnpackConnect(data)
-	if err != nil && server.validateClient(playerName, token){
-		fmt.Printf("Error Connect client Data [%s][%d]\n", length, string(data[:]))
-		return
-	}
-
-	if client, ok := server.tempClients[playerName]; ok {
+	if client, ok := server.tempClients[initPacket.PlayerName]; ok {
 		// already exist logic
 		//do something here
-		if ctype == 0 {
+		if initPacket.ConnectType == 0 {
 			client.addEventConn(conn)
-		} else if ctype == 1 {
+		} else if initPacket.ConnectType == 1 {
 			client.addInputConn(conn)
 		}
 
-		p := protocol.PackConnect(ctype, playerName)
-		data = append([]byte{'1'}, p...)
+		p := protocol.PackInitPacket(initPacket.ConnectType, initPacket.PlayerName)
+		data = append([]byte{'0'}, p...)
 		data = append(data, '\n')
-		fmt.Printf("login data: %s", data)
 		conn.Write(data)
 		//conn.Write(data)
-		server.addClient(playerName, client)
+		server.addClient(initPacket.PlayerName, client)
 
+		// Redis에 클라이언트 추가된 내용을 삽입
 	} else {
 		// playerName == clientName
-		client = server.createClient(playerName)
-		if ctype == 0 {
+		client = server.createClient(initPacket.PlayerName)
+		if initPacket.ConnectType == 0 {
 			client.addEventConn(conn)
-		} else if ctype == 1 {
+		} else if initPacket.ConnectType == 1 {
 			client.addInputConn(conn)
 		}
-		p := protocol.PackConnect(ctype, playerName)
-		data = append([]byte{'1'}, p...)
+		p := protocol.PackInitPacket(initPacket.ConnectType, initPacket.PlayerName)
+		data = append([]byte{'0'}, p...)
 		data = append(data, '\n')
-		fmt.Printf("login data: %s", data)
 		conn.Write(data)
 		//conn.Write(data)
 	}
@@ -141,7 +150,6 @@ func (server *GameServer) handleBroadcast() {
 					server.closeClient(string(data[1:]))
 				}
 			case data := <-server.broadcast:
-				fmt.Printf("broadcast data: %v\n%s", data, data)
 				server.writeBroadcast(data)
 			case data := <-server.inputcast:
 				// router 역할만 수행
@@ -175,10 +183,10 @@ func (server *GameServer) Run() {
 	server.listen()
 
 	eln, err := net.Listen("tcp", fmt.Sprintf(":%d", server.EventPort))
-	error.CheckError(err, "Listen Socket Bind Error Check.")
+	checker.CheckError(err, "Listen Socket Bind Error Check.")
 	defer eln.Close() // main 함수가 끝나기 직전에 연결 대기를 닫음
 	iln, err := net.Listen("tcp", fmt.Sprintf(":%d", server.InputPort))
-	error.CheckError(err, "Listen Socket Bind Error Check.")
+	checker.CheckError(err, "Listen Socket Bind Error Check.")
 	defer iln.Close() // main 함수가 끝나기 직전에 연결 대기를 닫음
 	fmt.Printf("tcp server listen port: [%d][%d]\n", server.EventPort, server.InputPort)
 
@@ -187,14 +195,14 @@ func (server *GameServer) Run() {
 		for {
 			// Connection이 발생하면, connection을 server.joins 채널로 보냄
 			econn, err := eln.Accept()
-			error.CheckError(err, "Accepted Event Socket connection Error.")
+			checker.CheckError(err, "Accepted Event Socket connection Error.")
 			server.eJoins <- econn
 		}
 	}()
 
 	for {
 		iconn, err := iln.Accept()
-		error.CheckError(err, "Accepted Input Socket connection Error.")
+		checker.CheckError(err, "Accepted Input Socket connection Error.")
 		server.iJoins <- iconn
 	}
 }
@@ -209,14 +217,8 @@ func (server *GameServer) Status() (int, int, int, int){
 	return server.InputPort, server.EventPort, server.maxConn, len(server.clients)
 }
 
-func NewServer(serverId int, port int, maxConn int) *GameServer {
+func NewServer(serverId int, port int, maxConn int, room *model.Room) *GameServer {
 	// 서버 초기화
-	if roomMap == nil {
-		roomMap = make(map[int]*model.Room)
-	}
-
-	roomMap[serverId] = model.NewRoom()
-
 	server := &GameServer{
 		ServerId: serverId,
 		EventPort: port,
@@ -232,6 +234,8 @@ func NewServer(serverId int, port int, maxConn int) *GameServer {
 		broadcast: make(chan []byte),
 		inputcast: make(chan []byte),
 		communicate: make(chan []byte),
+
+		Room: room,
 	}
 
 	return server

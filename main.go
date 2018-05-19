@@ -12,10 +12,8 @@ func main() {
 
 	setup.ConnectDatabase(config.Database)
 	r := setup.ConnectRouter(config.Cache)
-	//confPort := readDefaultConfig()
 
-	router.SetAPIRoute(r)
-	go router.ManageFoom(3)
+	router.SetAPIRoute(r,3)
 	// 게임 서버에서 Web Server와 통신하기 위한 HTTP Server Port Open
 	r.Run(fmt.Sprint(":", config.Server.Port))
 }
